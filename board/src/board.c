@@ -12,16 +12,6 @@
 
 /*==================[macros and definitions]=================================*/
 
-/* EXTAL0 PTA18 */
-#define EXTAL0_PORT   PORTA
-#define EXTAL0_PIN    18
-#define EXTAL0_PINMUX kPortPinDisabled
-
-/* XTAL0 PTA19 */
-#define XTAL0_PORT   PORTA
-#define XTAL0_PIN    19
-#define XTAL0_PINMUX kPortPinDisabled
-
 /** \brief definiciones para el Led rojo */
 #define LED_ROJO_PORT       PORTE
 #define LED_ROJO_GPIO       GPIOE
@@ -54,109 +44,6 @@
 
 /*==================[external functions definition]==========================*/
 
-/* Configuration for enter VLPR mode. Core clock = 4MHz. */
-const clock_manager_user_config_t g_defaultClockConfigVlpr =
-{
-    .mcgConfig =
-    {
-        .mcg_mode           = kMcgModeBLPI,   // Work in BLPI mode.
-        .irclkEnable        = true,  // MCGIRCLK enable.
-        .irclkEnableInStop  = false, // MCGIRCLK disable in STOP mode.
-        .ircs               = kMcgIrcFast, // Select IRC4M.
-        .fcrdiv             = 0U,    // FCRDIV is 0.
-
-        .frdiv   = 0U,
-        .drs     = kMcgDcoRangeSelLow,  // Low frequency range
-        .dmx32   = kMcgDmx32Default,    // DCO has a default range of 25%
-
-        .pll0EnableInFllMode        = false,  // PLL0 disable
-        .pll0EnableInStop  = false,  // PLL0 disalbe in STOP mode
-        .prdiv0            = 0U,
-        .vdiv0             = 0U,
-    },
-    .simConfig =
-    {
-        .pllFllSel = kClockPllFllSelFll, // PLLFLLSEL select FLL.
-        .er32kSrc  = kClockEr32kSrcLpo,     // ERCLK32K selection, use LPO.
-        .outdiv1   = 0U,
-        .outdiv4   = 4U,
-    },
-    .oscerConfig =
-    {
-        .enable       = true,  // OSCERCLK enable.
-        .enableInStop = false, // OSCERCLK disable in STOP mode.
-    }
-};
-
-/* Configuration for enter RUN mode. Core clock = 48MHz. */
-const clock_manager_user_config_t g_defaultClockConfigRun =
-{
-    .mcgConfig =
-    {
-        .mcg_mode           = kMcgModePEE,   // Work in PEE mode.
-        .irclkEnable        = true,  // MCGIRCLK enable.
-        .irclkEnableInStop  = false, // MCGIRCLK disable in STOP mode.
-        .ircs               = kMcgIrcSlow, // Select IRC32k.
-        .fcrdiv             = 0U,    // FCRDIV is 0.
-
-        .frdiv   = 3U,
-        .drs     = kMcgDcoRangeSelLow,  // Low frequency range
-        .dmx32   = kMcgDmx32Default,    // DCO has a default range of 25%
-
-        .pll0EnableInFllMode        = false,  // PLL0 disable
-        .pll0EnableInStop  = false,  // PLL0 disalbe in STOP mode
-        .prdiv0            = 0x1U,
-        .vdiv0             = 0x0U,
-    },
-    .simConfig =
-    {
-        .pllFllSel = kClockPllFllSelPll,    // PLLFLLSEL select PLL.
-        .er32kSrc  = kClockEr32kSrcLpo,     // ERCLK32K selection, use LPO.
-        .outdiv1   = 1U,
-        .outdiv4   = 3U,
-    },
-    .oscerConfig =
-    {
-        .enable       = true,  // OSCERCLK enable.
-        .enableInStop = false, // OSCERCLK disable in STOP mode.
-    }
-};
-
-static void CLOCK_SetBootConfig(clock_manager_user_config_t const* config)
-{
-    CLOCK_SYS_SetSimConfigration(&config->simConfig);
-
-    CLOCK_SYS_SetOscerConfigration(0, &config->oscerConfig);
-
-#if (CLOCK_INIT_CONFIG == CLOCK_VLPR)
-    CLOCK_SYS_BootToBlpi(&config->mcgConfig);
- #else
-    CLOCK_SYS_BootToPee(&config->mcgConfig);
- #endif
-
-    SystemCoreClock = CORE_CLOCK_FREQ;
-}
-
-/* Function to initialize OSC0 base on board configuration. */
-void BOARD_InitOsc0(void)
-{
-    // OSC0 configuration.
-    osc_user_config_t osc0Config =
-    {
-        .freq                = OSC0_XTAL_FREQ,
-        .hgo                 = MCG_HGO0,
-        .range               = MCG_RANGE0,
-        .erefs               = MCG_EREFS0,
-        .enableCapacitor2p   = OSC0_SC2P_ENABLE_CONFIG,
-        .enableCapacitor4p   = OSC0_SC4P_ENABLE_CONFIG,
-        .enableCapacitor8p   = OSC0_SC8P_ENABLE_CONFIG,
-        .enableCapacitor16p  = OSC0_SC16P_ENABLE_CONFIG,
-    };
-
-    CLOCK_SYS_OscInit(0U, &osc0Config);
-}
-
-
 
 void board_init(void)
 {
@@ -167,7 +54,7 @@ void board_init(void)
     SIM_HAL_EnableClock(SIM, kSimClockGatePortE);
 
     // Inicializo el clock del core
-    BOARD_ClockInit();
+    ClockInit();
 
 	/* =========== LED ROJO =============== */
 	
@@ -195,27 +82,6 @@ void board_init(void)
     PORT_HAL_SetPullCmd(SW3_PORT, SW3_PIN, true);
     PORT_HAL_SetPullMode(SW3_PORT, SW3_PIN, kPortPullUp);
 }
-
-
-/* Initialize clock. */
-void BOARD_ClockInit(void)
-{
-    /* Set allowed power mode, allow all. */
-    SMC_HAL_SetProtection(SMC, kAllowPowerModeAll);
-
-    /* Setup board clock source. */
-    // Setup OSC0 if used.
-    // Configure OSC0 pin mux.
-    PORT_HAL_SetMuxMode(EXTAL0_PORT, EXTAL0_PIN, EXTAL0_PINMUX);
-    PORT_HAL_SetMuxMode(XTAL0_PORT, XTAL0_PIN, XTAL0_PINMUX);
-    BOARD_InitOsc0();
-
-
-    CLOCK_SetBootConfig(&g_defaultClockConfigRun);
-
-}
-
-
 
 int8_t pulsadorSw1_get(void)
 {

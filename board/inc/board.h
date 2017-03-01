@@ -12,52 +12,6 @@ extern "C" {
 
 /*==================[macros]=================================================*/
 
-#define CLOCK_VLPR 1U
-#define CLOCK_RUN  2U
-#define CLOCK_NUMBER_OF_CONFIGURATIONS 3U
-
-#ifndef CLOCK_INIT_CONFIG
-#define CLOCK_INIT_CONFIG CLOCK_RUN
-#endif
-
-#if (CLOCK_INIT_CONFIG == CLOCK_RUN)
-#define CORE_CLOCK_FREQ 48000000U
-#else
-#define CORE_CLOCK_FREQ 4000000U
-#endif
-
-/* OSC0 configuration. */
-#define OSC0_XTAL_FREQ 8000000U
-#define OSC0_SC2P_ENABLE_CONFIG  false
-#define OSC0_SC4P_ENABLE_CONFIG  false
-#define OSC0_SC8P_ENABLE_CONFIG  false
-#define OSC0_SC16P_ENABLE_CONFIG false
-#define MCG_HGO0   kOscGainLow
-#define MCG_RANGE0 kOscRangeVeryHigh
-#define MCG_EREFS0 kOscSrcOsc
-
-/* EXTAL0 PTA18 */
-#define EXTAL0_PORT   PORTA
-#define EXTAL0_PIN    18
-#define EXTAL0_PINMUX kPortPinDisabled
-
-/* XTAL0 PTA19 */
-#define XTAL0_PORT   PORTA
-#define XTAL0_PIN    19
-#define XTAL0_PINMUX kPortPinDisabled
-
-#define UART_INSTANCE   ((UART_Type*)UART0)
-
-/* The UART to use for debug messages. */
-#ifndef BOARD_DEBUG_UART_INSTANCE
-    #define BOARD_DEBUG_UART_INSTANCE   0
-    #define BOARD_DEBUG_UART_BASEADDR   UART0
-#endif
-#ifndef BOARD_DEBUG_UART_BAUD
-    #define BOARD_DEBUG_UART_BAUD       115200
-#endif
-
-
 /*==================[typedef]================================================*/
 
 /*==================[external data declaration]==============================*/

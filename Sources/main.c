@@ -41,79 +41,101 @@
 #include "fsl_sim_hal.h"
 #include "fsl_mcg_hal.h"
 #include "fsl_tpm_hal.h"
+#include "fsl_smc_hal.h"
+#include "MKL46Z4.h"
+#include "fsl_port_hal.h"
 
 /*==================[macros and definitions]=================================*/
+
+/* OSC0 configuration. */
+#define OSC0_XTAL_FREQ 8000000U
+#define OSC0_SC2P_ENABLE_CONFIG  false
+#define OSC0_SC4P_ENABLE_CONFIG  false
+#define OSC0_SC8P_ENABLE_CONFIG  false
+#define OSC0_SC16P_ENABLE_CONFIG false
+#define MCG_HGO0   kOscGainLow
+#define MCG_RANGE0 kOscRangeVeryHigh
+#define MCG_EREFS0 kOscSrcOsc
+
+/* EXTAL0 PTA18 */
+#define EXTAL0_PORT   PORTA
+#define EXTAL0_PIN    18
+#define EXTAL0_PINMUX kPortPinDisabled
+
+/* XTAL0 PTA19 */
+#define XTAL0_PORT   PORTA
+#define XTAL0_PIN    19
+#define XTAL0_PINMUX kPortPinDisabled
 
 /*==================[internal data declaration]==============================*/
 
 /* Configuration for enter VLPR mode. Core clock = 4MHz. */
-const clock_manager_user_config_t g_defaultClockConfigVlpr =
+const clock_manager_user_config_t clockConfigVlpr =
 {
     .mcgConfig =
     {
-        .mcg_mode           = kMcgModeBLPI,   // Work in BLPI mode.
-        .irclkEnable        = true,  	// MCGIRCLK enable.
-        .irclkEnableInStop  = false, 	// MCGIRCLK disable in STOP mode.
-        .ircs               = kMcgIrcFast, // Select IRC4M.
-        .fcrdiv             = 0U,    	// FCRDIV is 0 (Divide Factor is 1).
+        .mcg_mode           = kMcgModeBLPI, // Work in BLPI mode.
+        .irclkEnable        = true,  		// MCGIRCLK enable.
+        .irclkEnableInStop  = false, 		// MCGIRCLK disable in STOP mode.
+        .ircs               = kMcgIrcFast, 	// Select IRC4M.
+		.fcrdiv             = 0,    		// FCRDIV 0. Divide Factor is 1
 
-        .frdiv   = 0U,					// Divide Factor is 1
-        .drs     = kMcgDcoRangeSelLow,  // Low frequency range
-        .dmx32   = kMcgDmx32Default,    // DCO has a default range of 25%
+        .frdiv   = 0,						// No afecta en este modo
+        .drs     = kMcgDcoRangeSelLow,  	// No afecta en este modo
+        .dmx32   = kMcgDmx32Default,    	// No afecta en este modo
 
-        .pll0EnableInFllMode = false,	// PLL0 disable
-        .pll0EnableInStop  = false,		// PLL0 disable in STOP mode
-        .prdiv0            = 0U,
-        .vdiv0             = 0U,
+        .pll0EnableInFllMode = false,  		// No afecta en este modo
+        .pll0EnableInStop  = false,  		// No afecta en este modo
+        .prdiv0            = 0b00,			// No afecta en este modo
+        .vdiv0             = 0b00,			// No afecta en este modo
     },
     .simConfig =
     {
-        .pllFllSel = kClockPllFllSelFll,// PLLFLLSEL select FLL.
-        .er32kSrc  = kClockEr32kSrcLpo,	// ERCLK32K selection, use LPO.
-        .outdiv1   = 0U,
-        .outdiv4   = 4U,
+        .pllFllSel = kClockPllFllSelPll,	// No afecta en este modo
+        .er32kSrc  = kClockEr32kSrcLpo,     // ERCLK32K selection, use LPO.
+        .outdiv1   = 0b0000,				// tener cuidado con frecuencias máximas de este modo
+        .outdiv4   = 0b101,					// tener cuidado con frecuencias máximas de este modo
     },
     .oscerConfig =
     {
-        .enable       = true,  			// OSCERCLK enable.
-        .enableInStop = false, 			// OSCERCLK disable in STOP mode.
+        .enable       = true,	  			// OSCERCLK enable.
+        .enableInStop = true, 				// OSCERCLK enable in STOP mode.
     }
 };
 
 /* Configuration for enter RUN mode. Core clock = 48MHz. */
-const clock_manager_user_config_t g_defaultClockConfigRun =
+const clock_manager_user_config_t clockConfigRun =
 {
     .mcgConfig =
     {
-        .mcg_mode           = kMcgModePEE,   // Work in PEE mode.
-        .irclkEnable        = true,  	// MCGIRCLK enable.
-        .irclkEnableInStop  = false, 	// MCGIRCLK disable in STOP mode.
-        .ircs               = kMcgIrcFast, // Select IRC32k.
-        .fcrdiv             = 0U,    	// FCRDIV is 0.
+        .mcg_mode           = kMcgModePEE,  // Work in PEE mode.
+        .irclkEnable        = true,  		// MCGIRCLK enable.
+        .irclkEnableInStop  = false, 		// MCGIRCLK disable in STOP mode.
+        .ircs               = kMcgIrcFast, 	// Select IRC4M.
+        .fcrdiv             = 0,    		// FCRDIV 0. Divide Factor is 1
 
-        .frdiv   = 3U,
-        .drs     = kMcgDcoRangeSelLow,  // Low frequency range
-        .dmx32   = kMcgDmx32Default,    // DCO has a default range of 25%
+        .frdiv   = 4,						// Divide Factor is 4 (128) (de todas maneras no afecta porque no usamos FLL)
+        .drs     = kMcgDcoRangeSelMid,  	// mid frequency range (idem anterior)
+        .dmx32   = kMcgDmx32Default,    	// DCO has a default range of 25% (idem anterior)
 
-        .pll0EnableInFllMode        = false,  // PLL0 disable
-        .pll0EnableInStop  = false,  	// PLL0 disable in STOP mode
-        .prdiv0            = 0x1U,
-        .vdiv0             = 0x0U,
+        .pll0EnableInFllMode = true,  		// PLL0 enable in FLL mode
+        .pll0EnableInStop  = true,  		// PLL0 enable in STOP mode
+        .prdiv0            = 0b11,			// divide factor 4 (Cristal 8Mhz / 4 * 24)
+        .vdiv0             = 0b00,			// multiply factor 24
     },
     .simConfig =
     {
         .pllFllSel = kClockPllFllSelPll,    // PLLFLLSEL select PLL.
         .er32kSrc  = kClockEr32kSrcLpo,     // ERCLK32K selection, use LPO.
-        .outdiv1   = 1U,
-        .outdiv4   = 3U,
+        .outdiv1   = 0b0000,				// Divide-by-1.
+        .outdiv4   = 0b001,					// Divide-by-2.
     },
     .oscerConfig =
     {
-        .enable       = true,  // OSCERCLK enable.
-        .enableInStop = false, // OSCERCLK disable in STOP mode.
+        .enable       = true,  				// OSCERCLK enable.
+        .enableInStop = true, 				// OSCERCLK enable in STOP mode.
     }
 };
-
 
 /*==================[internal functions declaration]=========================*/
 
@@ -162,16 +184,50 @@ void TPM_Init(void)
 	TPM_HAL_SetClockMode(TPM0, kTpmClockSourceModuleClk);
 }
 
-/*==================[external functions definition]==========================*/
+void InitOsc0(void)
+{
+    // OSC0 configuration.
+    osc_user_config_t osc0Config =
+    {
+        .freq                = OSC0_XTAL_FREQ,
+        .hgo                 = MCG_HGO0,
+        .range               = MCG_RANGE0,
+        .erefs               = MCG_EREFS0,
+        .enableCapacitor2p   = OSC0_SC2P_ENABLE_CONFIG,
+        .enableCapacitor4p   = OSC0_SC4P_ENABLE_CONFIG,
+        .enableCapacitor8p   = OSC0_SC8P_ENABLE_CONFIG,
+        .enableCapacitor16p  = OSC0_SC16P_ENABLE_CONFIG,
+    };
 
-extern const clock_manager_user_config_t g_defaultClockConfigRun;
-extern const clock_manager_user_config_t g_defaultClockConfigVlpr;
+    /* Setup board clock source. */
+    // Setup OSC0 if used.
+    // Configure OSC0 pin mux.
+    PORT_HAL_SetMuxMode(EXTAL0_PORT, EXTAL0_PIN, EXTAL0_PINMUX);
+    PORT_HAL_SetMuxMode(XTAL0_PORT, XTAL0_PIN, XTAL0_PINMUX);
+
+    CLOCK_SYS_OscInit(0U, &osc0Config);
+}
+
+/* Initialize clock. */
+void ClockInit(void)
+{
+    /* Set allowed power mode, allow all. */
+    SMC_HAL_SetProtection(SMC, kAllowPowerModeAll);
+
+    InitOsc0();
+
+    CLOCK_SYS_SetConfiguration(&clockConfigRun);
+}
+
+/*==================[external functions definition]==========================*/
 
 int main(void)
 {
 	uint32_t i;
 
 	board_init();
+
+	ClockInit();
 
 	// Se inicializa el timer
 	TPM_Init();
@@ -193,12 +249,12 @@ int main(void)
 
 		if(pulsadorSw3_get())
 		{
-			CLOCK_SYS_SetConfiguration(&g_defaultClockConfigRun);
+			CLOCK_SYS_SetConfiguration(&clockConfigVlpr);
 		}
 
 		if(pulsadorSw1_get())
 		{
-			CLOCK_SYS_SetConfiguration(&g_defaultClockConfigVlpr);
+			CLOCK_SYS_SetConfiguration(&clockConfigRun);
 		}
     }
 }
